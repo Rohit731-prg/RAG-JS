@@ -15,7 +15,7 @@ router.post("/add", express.raw({
     await parser.destroy();
     if (!PDF_data) return res.status(400).json({ message: "PDF not found..! " });
     const chunks = await chunkText(PDF_data.text);
-
+    console.log(chunks.slice(0,2))
     if (chunks.length === 0) {
         return res.status(400).json({ message: "PDF does not contain any text..!" });
     }
