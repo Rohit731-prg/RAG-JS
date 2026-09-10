@@ -4,24 +4,23 @@ import { upload } from "../Middleware/multer.js";
 import { chunkText } from "../Utils/Chunk_texts.js";
 import { create_vector, get_gemini_response } from "../Utils/gemini_functions.js";
 import { index } from "../Config/ConnestDB.js";
-import { Cohere } from "cohere-ai";
+import { CohereClient } from "cohere-ai";
 
 const router = express.Router();
+const cohere = new CohereClient({ token: process.env.COHERE_API_KEY });
 
 router.post("/add-note", upload.single("pdf"), async (req, res) => {
     try {
+
         if (!req.file) {
             return res.status(400).json({ message: "PDF file is required" });
         }
-
         const parser = new PDFParse({ data: req.file.buffer });
         const pdfRow = await parser.getText();
         await parser.destroy();
 
-        if (!parser) return res.status(400).json({ message: "PDF is empty" });
-
-        const chunks = chunkText(parser);
-        console.log(chunks.slice(0, 2))
+        if (!pdfRow?.text?.trim()) return res.status(400).json({ message: "PDF has no readable text" });
+        const chunks = chunkText(pdfRow.text);
 
         const vector_to_upsert = []
         let i = 0;
@@ -30,7 +29,7 @@ router.post("/add-note", upload.single("pdf"), async (req, res) => {
             vector_to_upsert.push({
                 id: `pdf-chunk-${Date.now()}-${i}`,
                 values: vector,
-                metadata: { text: chunk }
+                metadata: { text: chunk, userID: "example_user" }
             });
             i += 1
         }
@@ -55,13 +54,15 @@ router.post("/question", async (req, res) => {
             includeMetadata: true
         });
 
-        const initial_docs = search_result.matches(m => m.metadata.text);
-        const ranked = await Cohere.rerank({
+        const initial_docs = (search_result.matches ?? [])
+            .map(match => match.metadata?.text)
+            .filter(Boolean);
+        const ranked = await cohere.rerank({
             model: 'rerank-english-v3.0',
             query: question,
             documents: initial_docs,
             topN: 3
-        })
+        });
 
         const retrive_content = ranked.results.map(match => initial_docs[match.index]).join("\n---\n");
         const prompt = `Use ONLY this PDF context to answer the question: Context:${retrive_content}Question: ${question}`;
@@ -69,6 +70,7 @@ router.post("/question", async (req, res) => {
 
         return res.status(200).json({ response });
     } catch (error) {
+        console.log(error)
         return res.status(500).json({ message: error.message });
     }
 })

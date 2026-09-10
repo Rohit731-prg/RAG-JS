@@ -1,7 +1,5 @@
 import { GoogleGenAI } from "@google/genai";
-import { response } from "express";
-
-const ai = GoogleGenAI({
+const ai = new GoogleGenAI({
     apiKey: process.env.GEMINI_API_KEY
 });
 
@@ -15,21 +13,25 @@ export const create_vector = async (text) => {
             }
         });
 
-        const values = response.embedding?.[0].values;
+        const values = response.embeddings?.[0]?.values;
+        if (!values?.length) {
+            throw new Error("Gemini returned an empty embedding");
+        }
         return values
     } catch (error) {
         console.error("Error from Gemini: ", error);
+        throw error;
     }
 }
 
 export const get_gemini_response = async (quary) => {
     try {
         const reponse = await ai.models.generateContent({
-            model: 'gemini-2.0-flash',
+            model: 'gemini-3.6-flash',
             contents: quary,
         });
 
-        return response.text;
+        return reponse.text;
     } catch (error) {
         console.error("Error from Gemini: ", error);
     }
