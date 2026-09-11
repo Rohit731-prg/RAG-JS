@@ -7,7 +7,7 @@ const ai = new GoogleGenAI({
 export const create_embedding = async (text) => {
     try {
         const response = await ai.models.embedContent({
-            model: 'text-embedding-001',
+            model: 'gemini-embedding-001',
             contents: text,
             config: {
                 outputDimensionality: 3072
@@ -21,6 +21,6 @@ export const create_embedding = async (text) => {
 
         return values;
     } catch (error) {
-        console.log(error);
+        throw new Error(`Failed to create embedding: ${error.message}`, { cause: error });
     }
 };

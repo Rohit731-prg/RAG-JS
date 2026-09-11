@@ -1,5 +1,6 @@
 import OpenAI from "openai";
 
+
 const client = new OpenAI({
     apiKey: process.env.GROQ_API_KEY,
     baseURL: "https://api.groq.com/openai/v1",
@@ -7,8 +8,8 @@ const client = new OpenAI({
 
 export const generate_content = async (bestContext, question) => {
     try {
-        const completion = await groq.chat.completions.create({
-            model: "llama-3.1-8b-instant",
+        const completion = await client.chat.completions.create({
+            model: "openai/gpt-oss-20b",
             messages: [
                 {
                     role: 'system',
@@ -21,10 +22,10 @@ export const generate_content = async (bestContext, question) => {
             ],
             temperature: 0.2
         });
-
         return completion.choices[0]?.message?.content
     } catch (error) {
         console.log(error);
+        throw new Error(error);
     }
 }
 
